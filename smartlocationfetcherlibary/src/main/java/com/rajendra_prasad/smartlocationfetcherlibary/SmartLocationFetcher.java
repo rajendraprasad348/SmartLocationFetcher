@@ -17,7 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SmartLocationFetcher {
-    private GPSTracker gps;
+
     private static final String TAG = "TAG";
     public static ArrayList<AppDetailsModel> AppDetailsList = new ArrayList<>();
     private Activity activity;
@@ -36,7 +36,7 @@ public class SmartLocationFetcher {
 
     // checking any GPS spoofing apps present or not
     public Location fetchSmartLocation(Context context) {
-        Location UserLocation = null;
+        final Location[] UserLocation = {null};
         try {
             if (isMockSettingsON(context)) {
                 if (areThereMockPermissionApps(context)) {
@@ -45,14 +45,20 @@ public class SmartLocationFetcher {
             } else if (areThereMockPermissionApps(context)) {
                 showFragment(context);
             } else {
-                UserLocation = currentLocation(context);
-                mListener.onLocationReady(UserLocation);
+                LocationUpdater locationUpdater = new LocationUpdater(context, new LocationUpdateCallbacks() {
+                    @Override
+                    public void onLocationRetrieved(Location location) {
+                        UserLocation[0] = location;
+                        mListener.onLocationReady(location);
+                    }
+                });
+                locationUpdater.startLocationUpdates(false);
             }
         } catch (Exception e) {
             Log.d(TAG, "fetchUserSmartLocation: " + e);
             mListener.onError("" + e);
         }
-        return UserLocation;
+        return UserLocation[0];
     }
 
 
@@ -61,28 +67,6 @@ public class SmartLocationFetcher {
         FragmentManager fragmentManager = fragmentActivity.getSupportFragmentManager();
         AppDetailsFragment tv = new AppDetailsFragment();
         tv.show(fragmentManager, "AppDetailsList");
-    }
-
-    // get Current Location
-    private Location currentLocation(Context context) {
-        Double lattitude = null, longitude = null;
-        Location location = null;
-
-        try {
-            gps = new GPSTracker(context);
-            if (gps.canGetLocation()) {
-
-                lattitude = gps.getLatitude();
-                location = gps.getLocation();
-                longitude = gps.getLongitude();
-
-            } else {
-                gps.showSettingsAlert();
-            }
-        } catch (Exception e) {
-            Log.d(TAG, "currentLocation: " + e);
-        }
-        return location;
     }
 
     private boolean isMockSettingsON(Context context) {
